@@ -17,46 +17,47 @@ pipeline {
     }
 
     stages {
-        stage('Build') {
+        stage('Read package.json') {
             steps {
                 script {
-
-                    sh """
-                        echo 'Hello Build'
-                        sleep 10
-                        env
-                        echo "I am learning ${Course}. Wish me  best"
-                        echo "Hello ${params.PERSON}"
-                    """
-                }
-               
-
-            }
-        }
-        stage('Test') {
-            steps {
-                echo 'Testing..'
-            }
-        }
-        stage('Deploy') {
-              input {
-                message "Should we continue?"
-                ok "Yes, we should."
-                submitter "alice,bob"
-                parameters {
-                    string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
+                    def packageJson = readJSON file: 'package.json'
+                    appVersion = packageJson.version
+                    echo "Package version: ${appVersion}"
                 }
             }
-
+        }
+        stage('Install dependencies') {
             steps {
-                
+                sh """
+                    npm install
+                """
+            }
+        }
+
+        stage('Unit testing') {
+            steps {
                 script {
-
-                    echo "Hello, ${PERSON}, nice to meet you."
-                    echo 'Deploying....'
+                sh """
+                    echo 'unit tests'
+                """
                 }
             }
         }
+
+
+        stage('Docker build') {
+            steps {
+                script {
+                   withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                        sh """
+                            aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
+                            docker build -t ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
+                            docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
+                        """ 
+
+                }
+            }
+            }
     }
 
     post { 
