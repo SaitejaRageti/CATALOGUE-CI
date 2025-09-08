@@ -1,13 +1,15 @@
+def appVersion = ""
+
 pipeline {
     agent { label 'AGENT-1' }
 
     environment {
-        appVersion = ''
-        REGION = "us-east-1"
-        ACC_ID = "253490767945"
-        PROJECT = "roboshop"
+        REGION   = "us-east-1"
+        ACC_ID   = "253490767945"
+        PROJECT  = "roboshop"
         COMPONENT = "catalogue"
     }
+
     options {
         disableConcurrentBuilds()
         timeout(time: 30, unit: 'MINUTES')
@@ -27,38 +29,33 @@ pipeline {
                 }
             }
         }
+
         stage('Install dependencies') {
             steps {
-                sh """
-                    npm install
-                """
+                sh "npm install"
             }
         }
 
         stage('Unit testing') {
             steps {
-                script {
-                sh """
-                    echo 'unit tests'
-                """
-                }
+                sh "echo 'unit tests'"
             }
         }
-
 
         stage('Docker build') {
             steps {
-                script {
-                   withAWS(credentials: 'aws-creds', region: 'us-east-1') {
-                        sh """
-                            aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
-                            docker build -t ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
-                            docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
-                        """ 
-                    }
+                withAWS(credentials: 'aws-creds', region: "${REGION}") {
+                    sh """
+                        aws ecr get-login-password --region ${REGION} | \
+                        docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.${REGION}.amazonaws.com
+
+                        docker build -t ${ACC_ID}.dkr.ecr.${REGION}.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
+                        docker push ${ACC_ID}.dkr.ecr.${REGION}.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
+                    """
                 }
             }
         }
+    } // ✅ closes stages
 
     post { 
         always { 
@@ -71,5 +68,5 @@ pipeline {
         failure { 
             echo 'Hello Failure'
         }
-    }
-}
+    } // closes post
+} // closes pipeline
