@@ -66,7 +66,7 @@ pipeline {
             echo 'Hello Success'
         }
         failure { 
-            echo 'Hello Failure'
+            echo 'Hello Failure '
         }
     } // closes post
 } // closes pipeline
